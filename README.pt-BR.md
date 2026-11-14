@@ -1,67 +1,141 @@
 <div align="center">
 
-<img src="docs/img/icon.png" width="112" alt="Ícone do Orbit" />
+<img src="docs/img/icon.png" width="120" alt="Ícone do Orbit" />
 
 # Orbit
 
-**Seus limites do Claude Code sempre à vista.**
-App de barra de menus que mostra o uso de 5 horas e semanal, conta o tempo até o próximo reset,
-prevê quando você vai esgotar e acompanha cada sessão aberta do Claude Code, em várias contas.
+### Seus limites do Claude Code, sempre à vista.
 
-[![Release](https://img.shields.io/github/v/release/leandro5g/orbit?color=8b5cf6&label=download)](https://github.com/leandro5g/orbit/releases/latest)
-[![CI](https://github.com/leandro5g/orbit/actions/workflows/ci.yml/badge.svg)](https://github.com/leandro5g/orbit/actions/workflows/ci.yml)
-[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
+Chega de ser pego de surpresa pelo *"usage limit reached"*. O Orbit fica na barra de menus e mostra o
+**uso de 5 horas e semanal**, a **contagem até o próximo reset**, **quando você vai esgotar** no ritmo atual
+e **cada sessão aberta do Claude Code**, em todas as suas contas.
 
-[**Baixar**](https://github.com/leandro5g/orbit/releases/latest) · [English](README.md)
+[![Baixar](https://img.shields.io/github/v/release/leandro5g/orbit?style=for-the-badge&color=8b5cf6&label=Baixar&logo=github)](https://github.com/leandro5g/orbit/releases/latest)
 
-<img src="docs/img/main.png" width="360" alt="Popover do Orbit: contas, limites de 5h e semanal, previsão" />
-&nbsp;&nbsp;
-<img src="docs/img/sessions.png" width="360" alt="Tela de sessões do Orbit: todas as contas e sessões ativas" />
+[![CI](https://img.shields.io/github/actions/workflow/status/leandro5g/orbit/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/leandro5g/orbit/actions/workflows/ci.yml)
+![Plataformas](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-2b2540?style=flat-square&logo=electron)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-a78bfa?style=flat-square)](LICENSE)
+![Tudo local](https://img.shields.io/badge/100%25-local-4ade80?style=flat-square)
+[![Stars](https://img.shields.io/github/stars/leandro5g/orbit?style=flat-square&color=f5b83d)](https://github.com/leandro5g/orbit/stargazers)
+
+[English](README.md) · **Português**
+
+<a href="https://github.com/leandro5g/orbit/releases/download/v0.1.1/orbit-demo.mp4">
+  <img src="docs/img/demo.gif" width="880" alt="Demonstração do Orbit: barra de menus, limites, previsão, sessões e alertas" />
+</a>
+
+<sub>▶ <a href="https://github.com/leandro5g/orbit/releases/download/v0.1.1/orbit-demo.mp4">Assistir em HD, com música</a></sub>
 
 </div>
 
-## O que ele faz
+---
 
-- **Limites de 5h e semanal** por conta, com contagem regressiva até cada reset, na barra de menus.
-- **Previsão de esgotamento**: no ritmo atual, quando chega a 100% e se isso acontece antes do reset.
-- **Várias contas**: pessoal, trabalho, cliente… cada pasta do Claude Code é encontrada sozinha.
-- **Sessões ao vivo**: trabalhando, pensando, pedindo aprovação, erro, concluída, e a ferramenta em uso.
-- **Alterações de código**: linhas escritas pelo Claude na sessão e alterações não commitadas no repo (git).
-- **Alertas nativos** nos limiares que você escolher (50/70/85/95%), na previsão de esgotamento, no reset,
-  quando uma sessão pede aprovação ou dá erro.
-- **Tudo local**: sem servidor e sem telemetria. Os dados ficam num SQLite na sua máquina.
+## ✨ O que ele faz
 
-## Instalar
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### ⏱ Limites num relance
+Uso de 5h e semanal por conta, com contagem regressiva até cada reset, ao lado do relógio.
+`🟢 Trabalhando | 72% · 1h 38m`
+
+### 📈 Previsão de esgotamento
+No ritmo atual, o Orbit diz **quando você chega a 100%** e se isso acontece **antes do reset**,
+para você desacelerar, trocar de conta ou planejar uma pausa.
+
+### 👥 Várias contas
+Pessoal, trabalho, cliente… Cada pasta do Claude Code é encontrada sozinha. Conta nova em dois cliques.
+
+</td>
+<td width="50%" valign="top">
+
+### 🖥 Sessões ao vivo
+Trabalhando, pensando, **esperando sua aprovação**, erro, concluída, e a ferramenta em uso e há quanto tempo.
+
+### 🧩 Alterações de código
+Linhas escritas pelo Claude na sessão e alterações não commitadas no repositório (git), por sessão.
+
+### 🔔 Alertas inteligentes
+Notificações nativas nos seus limiares (50/70/85/95%), na previsão de esgotamento, no reset,
+quando uma sessão pede aprovação ou dá erro.
+
+</td>
+</tr>
+</table>
+
+<div align="center">
+<img src="docs/img/main.png" width="340" alt="Popover do Orbit" />
+&nbsp;&nbsp;&nbsp;
+<img src="docs/img/sessions.png" width="340" alt="Tela de sessões do Orbit" />
+</div>
+
+## 📦 Instalar
 
 Baixe a versão mais recente em [**Releases**](https://github.com/leandro5g/orbit/releases/latest):
 
 | Sistema | Arquivo |
 | --- | --- |
-| macOS · Apple Silicon | `Orbit-x.y.z-mac-arm64.dmg` |
-| macOS · Intel | `Orbit-x.y.z-mac-x64.dmg` |
-| Windows 10/11 | `Orbit-x.y.z-win-x64.exe` |
-| Linux | `Orbit-x.y.z-linux-x86_64.AppImage` |
+| 🍎 macOS · Apple Silicon (M1–M4) | `Orbit-x.y.z-mac-arm64.dmg` |
+| 🍎 macOS · Intel | `Orbit-x.y.z-mac-x64.dmg` |
+| 🪟 Windows 10/11 | `Orbit-x.y.z-win-x64.exe` |
+| 🐧 Linux | `Orbit-x.y.z-linux-x86_64.AppImage` |
 
-> **macOS:** o Orbit ainda não é notarizado pela Apple. Depois de arrastar para Aplicativos, rode uma vez
-> `xattr -dr com.apple.quarantine /Applications/Orbit.app`, ou abra por
-> Ajustes do Sistema → Privacidade e Segurança → *Abrir Mesmo Assim*.
+> [!IMPORTANT]
+> **macOS:** o Orbit ainda não é notarizado pela Apple. Depois de arrastar para Aplicativos, rode uma vez:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Orbit.app
+> ```
+> ou abra por **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**.
 
-**Requisito:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code) instalado e com login feito.
+**Requisito:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code) instalado e com login feito. Só isso:
+quem já usa o Claude Code não configura nada.
 
-## Como funciona
+## 🔒 Privacidade e como funciona
 
-O Orbit nunca pede senha e nunca lê nem guarda tokens. Tudo o que fala com a Anthropic passa pelo binário
-oficial `claude`, com o seu login:
+**O Orbit nunca pede senha e nunca lê nem guarda tokens.** Tudo o que fala com a Anthropic passa pelo
+binário oficial `claude`, com o seu login.
 
-- **Uso**: o Orbit roda `claude -p /usage` localmente (não gasta tokens) a cada poucos minutos.
-- **Contas** são pastas do Claude Code (`CLAUDE_CONFIG_DIR`). O Orbit acha `~/.claude` e `~/.claude-*` sozinho.
-  **+ → Nova conta** cria a pasta e abre o Terminal para o login oficial do Claude Code.
-- **Detalhes das sessões** (opcional): um clique instala statusline e hooks, com backup do `settings.json`,
-  para ter aprovação, erro, ferramenta em uso e uso em tempo real.
+| O quê | Como |
+| --- | --- |
+| **Uso** | Roda `claude -p /usage` localmente a cada poucos minutos, **sem gastar tokens**. |
+| **Contas** | Cada conta é uma pasta do Claude Code (`CLAUDE_CONFIG_DIR`). `~/.claude` e `~/.claude-*` são encontradas sozinhas. **+ → Nova conta** abre o Terminal para o login oficial. |
+| **Detalhes das sessões** *(opcional)* | Um clique instala statusline e hooks (com backup do `settings.json`) para aprovação, erro, ferramenta em uso e uso em tempo real. |
+| **Seus dados** | Ficam na sua máquina, num SQLite local. Sem servidor, sem telemetria, sem analytics. |
 
-O que é lido e instalado: [docs/integracao.md](docs/integracao.md).
+Detalhes do que é lido e instalado: [docs/integracao.md](docs/integracao.md).
 
-## Desenvolvimento
+## ❓ Perguntas frequentes
+
+<details>
+<summary><b>Gasta tokens ou conta no meu limite?</b></summary>
+
+Não. O `/usage` é um comando local do Claude Code que informa os limites sem mandar prompt para o modelo.
+</details>
+
+<details>
+<summary><b>A Anthropic permite isso?</b></summary>
+
+O Orbit não tem login próprio, não mexe nos seus tokens OAuth e não chama a API da Anthropic direto.
+Ele só roda a CLI oficial do Claude Code por você, como você faria no terminal.
+</details>
+
+<details>
+<summary><b>A previsão é precisa?</b></summary>
+
+É uma estimativa móvel, baseada no seu ritmo recente na janela de 5h, com um nível de confiança
+(baixa/média/alta) que cresce com o número de amostras. A interface marca como estimativa.
+</details>
+
+## 🗺 Próximos passos
+
+- [ ] Interface em inglês (i18n)
+- [ ] Build notarizado para macOS + Homebrew cask
+- [ ] Gráficos do histórico de uso
+- [ ] Ajustes para Windows/Linux (hooks em PowerShell, comportamento da bandeja)
+- [ ] Atualização automática
+
+## 🛠 Desenvolvimento
 
 ```bash
 npm install
@@ -70,7 +144,7 @@ npm test             # testes (previsão, estados, parser, instalador)
 npm run dist:mac     # ou dist:win / dist:linux → dist/
 ```
 
-Stack: Electron · React · TypeScript · Vite · Zustand · SQLite (`node:sqlite`).
+**Stack:** Electron · React · TypeScript · Vite · Zustand · SQLite (`node:sqlite`).
 
 ```
 src/main/        processo principal: coleta e menu bar
@@ -88,26 +162,26 @@ src/main/        processo principal: coleta e menu bar
 src/preload/     ponte IPC
 src/renderer/    popover (React + Zustand)
 src/shared/      tipos e formatação
+video/           vídeo de demonstração (Remotion, com os componentes reais)
 ```
 
 Variáveis úteis: `ORBIT_DEMO=1` (dados fictícios, para prints), `ORBIT_OPEN=1` (abre o popover ao iniciar),
 `ORBIT_CAPTURE=/tmp/x.png` (grava um print do popover), `ORBIT_DEBUG=1` (loga as leituras do `/usage`).
 
-### Publicar uma versão
+**Publicar uma versão:** `npm version patch && git push --follow-tags`. O GitHub Actions gera os builds de
+macOS, Windows e Linux e publica a release.
 
-Ao subir uma tag, o GitHub Actions gera os builds de macOS, Windows e Linux e publica a release:
+## 🤝 Contribuir
 
-```bash
-npm version patch && git push --follow-tags
-```
+Issues e PRs são muito bem-vindos: veja o [CONTRIBUTING.md](CONTRIBUTING.md).
+Se o Orbit te salvou de um limite surpresa, deixe uma ⭐: ajuda outras pessoas a encontrarem o projeto.
 
-## Status
+---
 
-MVP. Feito e testado no macOS; os builds de Windows e Linux saem do CI, mas ainda foram pouco testados.
-Issues e PRs são bem-vindos.
-
-O Orbit é um projeto independente, sem vínculo com a Anthropic. "Claude" e "Claude Code" são marcas da Anthropic.
-
-## Licença
-
-[MIT](LICENSE) © Leandro Moraes
+<div align="center">
+<sub>
+O Orbit é um projeto independente, sem vínculo com a Anthropic.
+"Claude" e "Claude Code" são marcas da Anthropic.<br/>
+<a href="LICENSE">MIT</a> © Leandro Moraes
+</sub>
+</div>

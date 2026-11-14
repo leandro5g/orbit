@@ -134,7 +134,8 @@ export function demoSnapshot(settings: Settings, now: number): Snapshot {
     selectedId: personal.id,
     settings: { ...settings, names: {}, hiddenAccounts: [] },
     generatedAt: now,
-    platform: process.platform,
+    // Também usado pelo vídeo de demonstração (video/), que roda no navegador.
+    platform: (globalThis.process?.platform ?? 'darwin') as NodeJS.Platform,
     claudePath: '/usr/local/bin/claude'
   }
 }
