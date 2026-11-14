@@ -1,0 +1,27 @@
+name: Bug
+description: Algo não funciona como deveria / Something is broken
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu / What happened
+      description: E o que você esperava / And what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir / Steps to reproduce
+  - type: input
+    id: os
+    attributes:
+      label: Sistema / OS
+      placeholder: macOS 15.2 (Apple Silicon)
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versão do Orbit e do Claude Code / Orbit and Claude Code versions
+      placeholder: Orbit 0.1.0 · Claude Code 2.1.0

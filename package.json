@@ -1,0 +1,126 @@
+{
+  "name": "orbit",
+  "productName": "Orbit",
+  "version": "0.1.0",
+  "description": "Claude Code usage monitor for the menu bar: 5h and weekly limits, reset countdown, exhaustion forecast and live sessions.",
+  "author": "Leandro Moraes",
+  "license": "MIT",
+  "homepage": "https://github.com/leandro5g/orbit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leandro5g/orbit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/leandro5g/orbit/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "menubar",
+    "usage",
+    "monitor",
+    "electron"
+  ],
+  "main": "./out/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --experimental-strip-types src/main/*.test.ts",
+    "dist": "electron-vite build && electron-builder --mac --dir",
+    "dist:mac": "electron-vite build && electron-builder --mac --publish never",
+    "dist:win": "electron-vite build && electron-builder --win --publish never",
+    "dist:linux": "electron-vite build && electron-builder --linux --publish never"
+  },
+  "build": {
+    "appId": "dev.orbit.monitor",
+    "productName": "Orbit",
+    "copyright": "Copyright © 2026 Leandro Moraes",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "LSUIElement": true
+      },
+      "icon": "build/icon.icns",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false
+    },
+    "dmg": {
+      "title": "Orbit ${version}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "synopsis": "Claude Code usage monitor"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "typescript": "5.9",
+    "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "allowScripts": {
+    "electron@45.3.2": true
+  }
+}
