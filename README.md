@@ -28,6 +28,23 @@ and **every live Claude Code session**, across all your accounts.
 
 </div>
 
+## 🚀 Install in one line
+
+**macOS / Linux** — paste in the Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leandro5g/orbit/main/install.sh | sh
+```
+
+**Windows** — paste in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/leandro5g/orbit/main/install.ps1 | iex
+```
+
+That's it: it downloads the latest version, installs it and opens Orbit. Look for the ✦ in your menu bar.
+Run the same command again to update. Prefer clicking? [Download the installer](#-install).
+
 ---
 
 ## ✨ Features
@@ -72,7 +89,7 @@ when a session needs approval or fails.
 
 ## 📦 Install
 
-Grab the latest build from [**Releases**](https://github.com/leandro5g/orbit/releases/latest):
+Or download the installer from [**Releases**](https://github.com/leandro5g/orbit/releases/latest):
 
 | System | File |
 | --- | --- |
@@ -82,7 +99,7 @@ Grab the latest build from [**Releases**](https://github.com/leandro5g/orbit/rel
 | 🐧 Linux | `Orbit-x.y.z-linux-x86_64.AppImage` |
 
 > [!IMPORTANT]
-> **macOS:** Orbit isn't notarized by Apple yet. After dragging it to Applications, run once:
+> **macOS, manual install only:** Orbit isn't notarized by Apple yet (the one-line installer already handles this). After dragging it to Applications, run once:
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/Orbit.app
 > ```

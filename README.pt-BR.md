@@ -28,6 +28,23 @@ e **cada sessão aberta do Claude Code**, em todas as suas contas.
 
 </div>
 
+## 🚀 Instale com uma linha
+
+**macOS / Linux**, cole no Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/leandro5g/orbit/main/install.sh | sh
+```
+
+**Windows**, cole no PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/leandro5g/orbit/main/install.ps1 | iex
+```
+
+Pronto: baixa a última versão, instala e abre o Orbit. Procure o ✦ na barra de menus.
+Para atualizar, rode o mesmo comando de novo. Prefere clicar? [Baixe o instalador](#-instalar).
+
 ---
 
 ## ✨ O que ele faz
@@ -72,7 +89,7 @@ quando uma sessão pede aprovação ou dá erro.
 
 ## 📦 Instalar
 
-Baixe a versão mais recente em [**Releases**](https://github.com/leandro5g/orbit/releases/latest):
+Ou baixe o instalador em [**Releases**](https://github.com/leandro5g/orbit/releases/latest):
 
 | Sistema | Arquivo |
 | --- | --- |
@@ -82,7 +99,7 @@ Baixe a versão mais recente em [**Releases**](https://github.com/leandro5g/orbi
 | 🐧 Linux | `Orbit-x.y.z-linux-x86_64.AppImage` |
 
 > [!IMPORTANT]
-> **macOS:** o Orbit ainda não é notarizado pela Apple. Depois de arrastar para Aplicativos, rode uma vez:
+> **macOS, só na instalação manual:** o Orbit ainda não é notarizado pela Apple (o comando de uma linha já resolve isso). Depois de arrastar para Aplicativos, rode uma vez:
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/Orbit.app
 > ```
