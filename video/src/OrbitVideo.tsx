@@ -69,7 +69,7 @@ function trayText(s: Snapshot): { dot: string; text: string } {
 
 // ---------- peças ----------
 
-const Background = () => {
+export const Background = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const r = Math.max(width, height);
@@ -106,7 +106,7 @@ const Background = () => {
   );
 };
 
-const MenuBar = ({ snapshot, active }: { snapshot: Snapshot; active: boolean }) => {
+export const MenuBar = ({ snapshot, active }: { snapshot: Snapshot; active: boolean }) => {
   const { width } = useVideoConfig();
   const { dot, text } = trayText(snapshot);
   const clock = new Date(snapshot.generatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -163,7 +163,7 @@ const MenuBar = ({ snapshot, active }: { snapshot: Snapshot; active: boolean }) 
 };
 
 /** O popover real do app (App.tsx), no estado do instante. */
-const Popover = ({
+export const Popover = ({
   snapshot,
   view,
   style,
@@ -207,7 +207,7 @@ const ForecastGlow = ({ from, to }: { from: number; to: number }) => {
   );
 };
 
-const Caption = ({ from, to, kicker, title }: { from: number; to: number; kicker: string; title: ReactNode }) => {
+export const Caption = ({ from, to, kicker, title }: { from: number; to: number; kicker: string; title: ReactNode }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const square = width / height < 1.3;

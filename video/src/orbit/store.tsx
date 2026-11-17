@@ -6,13 +6,15 @@ import type { Snapshot } from "../../../src/shared/types";
  * do frame atual, por contexto, em vez do Electron.
  */
 
-export type View = "main" | "sessions" | "settings" | "add";
+export type View = "main" | "sessions" | "settings" | "add" | "works" | "switch";
 
 type UiState = {
   snapshot: Snapshot | null;
   view: View;
   now: number;
   toast: { ok: boolean; message: string } | null;
+  switchFrom: string | null;
+  openSwitch: (from: string | null) => void;
   setSnapshot: (s: Snapshot) => void;
   setView: (v: View) => void;
   tick: () => void;
@@ -25,6 +27,8 @@ const Ctx = createContext<UiState>({
   view: "main",
   now: 0,
   toast: null,
+  switchFrom: null,
+  openSwitch: noop,
   setSnapshot: noop,
   setView: noop,
   tick: noop,
@@ -55,7 +59,7 @@ export const OrbitState = ({
   now: number;
   children: ReactNode;
 }) => {
-  const value: UiState = { snapshot, view, now, toast: null, setSnapshot: noop, setView: noop, tick: noop, showToast: noop };
+  const value: UiState = { snapshot, view, now, toast: null, switchFrom: null, openSwitch: noop, setSnapshot: noop, setView: noop, tick: noop, showToast: noop };
   current = value;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
@@ -67,7 +71,7 @@ const api = new Proxy(
     get: (_t, key) =>
       key === "getSnapshot"
         ? () => new Promise(() => {})
-        : key === "onSnapshot" || key === "onShown"
+        : typeof key === "string" && key.startsWith("on")
           ? () => noop
           : () => Promise.resolve(),
   },
