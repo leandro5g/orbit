@@ -37,18 +37,25 @@ say "Baixando $(basename "$URL")…"
 curl -fL --progress-bar "$URL" -o "$TMP/orbit"
 
 if [ "$(uname -s)" = Darwin ]; then
+  # Sempre em Aplicativos, como um app comum. Sem permissão de escrita lá, pede a senha (sudo).
   DEST="${ORBIT_INSTALL_DIR:-/Applications}"
-  [ -w "$DEST" ] || DEST="$HOME/Applications"
-  mkdir -p "$DEST"
+  SUDO=""
+  mkdir -p "$DEST" 2>/dev/null || true
+  if [ ! -w "$DEST" ]; then
+    command -v sudo >/dev/null 2>&1 || fail "Sem permissão para instalar em $DEST."
+    say "Instalar em $DEST precisa da sua senha de administrador."
+    SUDO="sudo"
+    $SUDO mkdir -p "$DEST"
+  fi
   ditto -x -k "$TMP/orbit" "$TMP/app"
   if [ -d "$DEST/Orbit.app" ]; then
     say "Atualizando a versão instalada…"
     pkill -x Orbit 2>/dev/null || true
-    rm -rf "$DEST/Orbit.app"
+    $SUDO rm -rf "$DEST/Orbit.app"
   fi
-  mv "$TMP/app/Orbit.app" "$DEST/Orbit.app"
+  $SUDO ditto "$TMP/app/Orbit.app" "$DEST/Orbit.app"
   # O app ainda não é notarizado pela Apple: sem isso o macOS bloqueia a abertura.
-  xattr -dr com.apple.quarantine "$DEST/Orbit.app" 2>/dev/null || true
+  $SUDO xattr -dr com.apple.quarantine "$DEST/Orbit.app" 2>/dev/null || true
   say "Orbit instalado em $DEST/Orbit.app"
   [ "${ORBIT_NO_OPEN:-}" = 1 ] || open "$DEST/Orbit.app"
 else
