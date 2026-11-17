@@ -1,3 +1,12 @@
+## Novidades
+
+- **Troque de conta sem perder o contexto:** perto do limite, o Orbit salva um registro de continuação de cada trabalho; quando a conta esgota, você continua em outra conta e o Claude retoma de onde parou.
+- **Conta esgotada em destaque:** o topo do Orbit mostra "Conta esgotou · volta às HH:MM" e as sessões dela, cada uma com **Continuar em <conta>** e **Mudar conta**.
+- **Layout mais limpo:** Sessões e trabalhos numa tela só, menos ícones e menos texto repetido.
+- O instalador de uma linha sempre instala em **/Applications** no macOS.
+
+Tudo o que mudou: [CHANGELOG.md](https://github.com/leandro5g/orbit/blob/main/CHANGELOG.md)
+
 ## Instalar com uma linha
 
 **macOS / Linux** (Terminal):
