@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/leandro5g/orbit/main/install.sh | s
 irm https://raw.githubusercontent.com/leandro5g/orbit/main/install.ps1 | iex
 ```
 
-Pronto: baixa a última versão, instala e abre o Orbit. Procure o ✦ na barra de menus.
+Pronto: baixa a última versão, instala e abre o Orbit. No macOS ele vai para **Aplicativos** (`/Applications`), como qualquer app; se precisar, pede a senha de administrador. Procure o ✦ na barra de menus.
 Para atualizar, rode o mesmo comando de novo. Prefere clicar? [Baixe o instalador](#-instalar).
 
 ---
@@ -63,6 +63,10 @@ para você desacelerar, trocar de conta ou planejar uma pausa.
 
 ### 👥 Várias contas
 Pessoal, trabalho, cliente… Cada pasta do Claude Code é encontrada sozinha. Conta nova em dois cliques.
+
+### 🔁 Troque de conta sem perder o contexto
+Nos 90% (configurável), o Orbit salva um **registro de continuação** de cada trabalho aberto: objetivo, feito,
+falta, decisões e próximo passo. Quando os tokens acabam, você escolhe outra conta e o Claude continua de onde parou.
 
 </td>
 <td width="50%" valign="top">
@@ -118,6 +122,7 @@ binário oficial `claude`, com o seu login.
 | **Uso** | Roda `claude -p /usage` localmente a cada poucos minutos, **sem gastar tokens**. |
 | **Contas** | Cada conta é uma pasta do Claude Code (`CLAUDE_CONFIG_DIR`). `~/.claude` e `~/.claude-*` são encontradas sozinhas. **+ → Nova conta** abre o Terminal para o login oficial. |
 | **Detalhes das sessões** *(opcional)* | Um clique instala statusline e hooks (com backup do `settings.json`) para aprovação, erro, ferramenta em uso e uso em tempo real. |
+| **Registro de continuação** | Fica em `<repo>/.orbit/trabalhos/` (fora do git). Perto do limite, o hook pede ao Claude, uma vez e no fim do turno, que escreva o registro. |
 | **Seus dados** | Ficam na sua máquina, num SQLite local. Sem servidor, sem telemetria, sem analytics. |
 
 Detalhes do que é lido e instalado: [docs/integracao.md](docs/integracao.md).

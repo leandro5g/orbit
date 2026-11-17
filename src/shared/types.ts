@@ -118,6 +118,44 @@ export interface Settings {
   /** Caminho do binário do Claude Code escolhido à mão (quando não é encontrado sozinho). */
   claudePath: string | null
   integrationHintDismissed: boolean
+  /** Registrar os trabalhos abertos antes de a conta esgotar. */
+  handoffEnabled: boolean
+  /** Uso (%) em que o Orbit pede ao Claude o registro de continuação. */
+  handoffAt: number
+  /** Uso (%) em que aparece o "tokens terminando, deseja trocar de conta?". */
+  switchAlertAt: number
+  /** Ao continuar em outra conta, levar a conversa inteira (gasta mais) em vez de só o registro. */
+  handoffFullHistory: boolean
+}
+
+export type WorkStatus = 'active' | 'paused' | 'done'
+
+/**
+ * Trabalho: a tarefa, não a sessão. Nasce de uma sessão do Claude Code e sobrevive a ela:
+ * quando a conta esgota, continua em outra conta a partir do registro de continuação.
+ */
+export interface Work {
+  id: string
+  title: string
+  project: string
+  /** Pasta onde o Claude Code roda (raiz do repo quando há git). */
+  cwd: string
+  /** Conta da sessão mais recente. */
+  accountId: string
+  sessionId: string
+  status: WorkStatus
+  /** Registro de continuação: <repo>/.orbit/trabalhos/<id>.md */
+  noteFile: string
+  /** Quem escreveu o registro: o Claude (resumo completo) ou o Orbit (sem tokens, a partir do histórico). */
+  noteBy: 'claude' | 'orbit' | null
+  noteAt: number | null
+  /** Checklist do registro: itens feitos e total. */
+  doneItems: number | null
+  totalItems: number | null
+  next: string | null
+  /** Pedido de registro enviado ao Claude e ainda não atendido. */
+  requestedAt: number | null
+  updatedAt: number
 }
 
 export interface Snapshot {
@@ -128,6 +166,7 @@ export interface Snapshot {
   platform: NodeJS.Platform
   /** Binário do Claude Code encontrado. null: não instalado ou fora dos lugares comuns. */
   claudePath: string | null
+  works: Work[]
 }
 
 export interface ActionResult {
@@ -154,6 +193,15 @@ export interface OrbitApi {
   resize(height: number): void
   openPath(path: string): void
   quit(): void
+  onNavigate(cb: (to: { view: 'works' | 'switch'; from?: string }) => void): () => void
+  /** Continua o trabalho na conta escolhida: abre o Terminal na pasta, já na conta, lendo o registro. */
+  continueWork(workId: string, accountId: string): Promise<ActionResult & { command?: string; opened?: boolean }>
+  /** Pede o registro de continuação agora (ao Claude, se houver hooks; senão, o Orbit escreve). */
+  saveWork(workId: string): Promise<ActionResult>
+  readWorkNote(workId: string): Promise<string | null>
+  renameWork(workId: string, title: string): Promise<void>
+  finishWork(workId: string): Promise<void>
+  dismissWork(workId: string): Promise<void>
 }
 
 export const STATE_PRIORITY: SessionState[] = [

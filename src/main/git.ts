@@ -116,3 +116,9 @@ export function changesFor(root: string, now = Date.now()): Promise<CodeChanges 
   statsCache.set(root, { value: hit?.value ?? null, at: hit?.at ?? 0, pending })
   return pending
 }
+
+/** Arquivos com alteração não commitada, no formato curto do git (" M src/a.ts"). Para o registro de continuação. */
+export async function changedFiles(root: string, max = 40): Promise<string[]> {
+  const out = await git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+  return (out ?? '').split('\n').filter((l) => l.trim()).slice(0, max)
+}

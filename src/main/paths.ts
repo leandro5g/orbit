@@ -7,6 +7,8 @@ export const STATUSLINE_DIR = join(ORBIT_DIR, 'statusline')
 export const EVENTS_DIR = join(ORBIT_DIR, 'events')
 export const STATUSLINE_SCRIPT = join(ORBIT_DIR, 'statusline.sh')
 export const HOOK_SCRIPT = join(ORBIT_DIR, 'hook.sh')
+/** Pedidos de registro de continuação, um arquivo por sessão; o hook.sh entrega ao Claude no fim do turno. */
+export const HANDOFF_DIR = join(ORBIT_DIR, 'handoff')
 export const DEFAULT_CONFIG_DIR = join(HOME, '.claude')
 
 /**

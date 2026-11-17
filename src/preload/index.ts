@@ -27,7 +27,18 @@ const api: OrbitApi = {
   updateSettings: (patch) => ipcRenderer.invoke('orbit:updateSettings', patch),
   resize: (h) => ipcRenderer.send('orbit:resize', h),
   openPath: (p) => ipcRenderer.send('orbit:openPath', p),
-  quit: () => ipcRenderer.send('orbit:quit')
+  quit: () => ipcRenderer.send('orbit:quit'),
+  onNavigate: (cb) => {
+    const fn = (_e: unknown, to: { view: 'works' | 'switch'; from?: string }) => cb(to)
+    ipcRenderer.on('orbit:navigate', fn)
+    return () => ipcRenderer.off('orbit:navigate', fn)
+  },
+  continueWork: (workId, accountId) => ipcRenderer.invoke('orbit:continueWork', workId, accountId),
+  saveWork: (workId) => ipcRenderer.invoke('orbit:saveWork', workId),
+  readWorkNote: (workId) => ipcRenderer.invoke('orbit:readWorkNote', workId),
+  renameWork: (workId, title) => ipcRenderer.invoke('orbit:renameWork', workId, title),
+  finishWork: (workId) => ipcRenderer.invoke('orbit:finishWork', workId),
+  dismissWork: (workId) => ipcRenderer.invoke('orbit:dismissWork', workId)
 }
 
 contextBridge.exposeInMainWorld('orbit', api)

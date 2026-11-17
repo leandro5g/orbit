@@ -64,3 +64,12 @@ export const Refresh = ({ size, className }: P) => (
 export const Trash = ({ size, className }: P) => (
   <svg {...base(size)} className={className} aria-hidden><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
 )
+export const Layers = ({ size, className }: P) => (
+  <svg {...base(size)} className={className} aria-hidden>
+    <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+    <path d="m3 13 9 5 9-5" />
+  </svg>
+)
+export const Swap = ({ size, className }: P) => (
+  <svg {...base(size)} className={className} aria-hidden><path d="M7 7h13l-4-4M17 17H4l4 4" /></svg>
+)

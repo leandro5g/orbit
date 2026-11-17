@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/leandro5g/orbit/main/install.sh | s
 irm https://raw.githubusercontent.com/leandro5g/orbit/main/install.ps1 | iex
 ```
 
-That's it: it downloads the latest version, installs it and opens Orbit. Look for the ✦ in your menu bar.
+That's it: it downloads the latest version, installs it and opens Orbit. On macOS it goes to **Applications** (`/Applications`) like any other app, asking for your admin password if needed. Look for the ✦ in your menu bar.
 Run the same command again to update. Prefer clicking? [Download the installer](#-install).
 
 ---
@@ -63,6 +63,10 @@ so you can slow down, switch accounts or plan a break.
 
 ### 👥 Multiple accounts
 Personal, work, client… Every Claude Code config dir is picked up automatically. Add a new one in two clicks.
+
+### 🔁 Switch accounts without losing context
+At 90% (configurable) Orbit saves a **handoff note** for each open task: goal, done, to do, decisions, next step.
+When tokens run out, pick another account and Claude picks up right where it stopped.
 
 </td>
 <td width="50%" valign="top">
@@ -118,6 +122,7 @@ goes through the official `claude` binary, with your own login.
 | **Usage** | Runs `claude -p /usage` locally every few minutes — **no tokens spent**. |
 | **Accounts** | Each account is a Claude Code config dir (`CLAUDE_CONFIG_DIR`). `~/.claude` and `~/.claude-*` are found automatically. **+ → New account** opens the Terminal for the official login. |
 | **Session details** *(optional)* | One click installs a statusline and hooks (with a backup of your `settings.json`) for approval/error states, the tool in use and real-time usage. |
+| **Handoff notes** | Saved in `<repo>/.orbit/trabalhos/` (git-ignored). Near the limit, the hook asks Claude once, at the end of a turn, to write the note. |
 | **Your data** | Stays on your machine, in a local SQLite file. No server, no telemetry, no analytics. |
 
 Full details on what is read and installed: [docs/integracao.md](docs/integracao.md).

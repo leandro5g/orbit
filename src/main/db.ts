@@ -27,6 +27,15 @@ export class LocalStore {
         session_id TEXT PRIMARY KEY, account TEXT NOT NULL, project TEXT, cwd TEXT,
         first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, last_state TEXT
       );
+      CREATE TABLE IF NOT EXISTS works (
+        id TEXT PRIMARY KEY, title TEXT, custom_title TEXT, project TEXT NOT NULL, cwd TEXT NOT NULL,
+        root TEXT NOT NULL, account TEXT NOT NULL, session_id TEXT NOT NULL, status TEXT NOT NULL,
+        created INTEGER NOT NULL, updated INTEGER NOT NULL, requested_at INTEGER,
+        hidden INTEGER NOT NULL DEFAULT 0, done_at INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS work_sessions (
+        session_id TEXT PRIMARY KEY, work_id TEXT NOT NULL, account TEXT NOT NULL, started INTEGER NOT NULL
+      );
     `)
   }
 
@@ -73,10 +82,24 @@ export class LocalStore {
       .run(id, account, project, cwd, now, now, state)
   }
 
+  run(sql: string, ...params: (string | number | null)[]): void {
+    this.db.prepare(sql).run(...params)
+  }
+
+  one<T>(sql: string, ...params: (string | number | null)[]): T | undefined {
+    return this.db.prepare(sql).get(...params) as T | undefined
+  }
+
+  all<T>(sql: string, ...params: (string | number | null)[]): T[] {
+    return this.db.prepare(sql).all(...params) as unknown as T[]
+  }
+
   prune(now: number): void {
     const cutoff = now - 30 * 24 * 3600_000
     this.db.prepare('DELETE FROM usage_samples WHERE ts < ?').run(cutoff)
     this.db.prepare('DELETE FROM session_history WHERE last_seen < ?').run(cutoff)
+    this.db.prepare('DELETE FROM work_sessions WHERE work_id IN (SELECT id FROM works WHERE updated < ?)').run(cutoff)
+    this.db.prepare('DELETE FROM works WHERE updated < ?').run(cutoff)
   }
 
   close(): void {

@@ -1,18 +1,19 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, screen, shell, Tray } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, shell, Tray } from 'electron'
 import { join } from 'node:path'
 import { formatRemaining, overallState, STATE_LABEL, STATE_TONE } from '../shared/format.ts'
 import type { AccountView, ActionResult, Settings, Snapshot } from '../shared/types.ts'
 import { existsSync, mkdirSync } from 'node:fs'
 import { accountIdFor, DEFAULT_CONFIG_DIR, HOME } from './paths.ts'
 import { defaultName, discoverAccounts, looksLikeConfigDir } from './accounts.ts'
-import { fetchUsage, findClaude, openLoginTerminal, type CliUsage } from './claude-cli.ts'
+import { fetchUsage, findClaude, openClaudeTerminal, openLoginTerminal, type CliUsage } from './claude-cli.ts'
 import { LocalStore } from './db.ts'
-import { installIntegration } from './integration.ts'
+import { installIntegration, upgradeHookScript } from './integration.ts'
 import { Notifier } from './notifications.ts'
 import { readSessions } from './sessions.ts'
 import { orbitTrayIcon } from './tray-icon.ts'
 import { buildUsage, scanStatusline } from './usage.ts'
-import { demoSnapshot } from './demo.ts'
+import { demoNote, demoSnapshot } from './demo.ts'
+import { WorkTracker } from './works.ts'
 
 const isMac = process.platform === 'darwin'
 const WIDTH = 392
@@ -37,13 +38,18 @@ const DEFAULT_SETTINGS: Settings = {
   extraConfigDirs: [],
   selectedAccountId: null,
   claudePath: null,
-  integrationHintDismissed: false
+  integrationHintDismissed: false,
+  handoffEnabled: true,
+  handoffAt: 90,
+  switchAlertAt: 95,
+  handoffFullHistory: false
 }
 
 let tray: Tray | null = null
 let win: BrowserWindow | null = null
 let store: LocalStore
 let notifier: Notifier
+let works: WorkTracker
 let settings: Settings
 let snapshot: Snapshot | null = null
 let lastSent = ''
@@ -87,7 +93,25 @@ async function collect(): Promise<Snapshot> {
   if (!views.some((v) => v.id === selectedId)) {
     selectedId = views.find((v) => v.usage.fiveHour)?.id ?? views[0]?.id ?? null
   }
-  return { accounts: views, selectedId, settings, generatedAt: now, platform: process.platform, claudePath }
+  const workList = works.sync(views, settings, now)
+  return { accounts: views, selectedId, settings, generatedAt: now, platform: process.platform, claudePath, works: workList }
+}
+
+/** "Tokens terminando, deseja trocar de conta?": o clique abre o Orbit na tela de troca. */
+function switchAlert(from: AccountView, count: number): void {
+  if (!Notification.isSupported()) return
+  const pct = Math.max(from.usage.fiveHour?.usedPercent ?? 0, from.usage.sevenDay?.usedPercent ?? 0)
+  const n = new Notification({
+    title: `${from.name} em ${pct}%: trocar de conta?`,
+    body: `${count === 1 ? 'O trabalho aberto está salvo' : `Os ${count} trabalhos abertos estão salvos`}. Clique para escolher a conta e continuar.`
+  })
+  n.on('click', () => navigate({ view: 'switch', from: from.id }))
+  n.show()
+}
+
+function navigate(to: { view: 'works' | 'switch'; from?: string }): void {
+  showWindow()
+  win?.webContents.send('orbit:navigate', to)
 }
 
 /** Atualiza o uso de cada conta com o /usage do Claude Code. Uma conta por vez, em segundo plano. */
@@ -389,6 +413,56 @@ function registerIpc(): void {
     if (typeof p === 'string' && p.startsWith('/')) void shell.openPath(p)
   })
   ipcMain.on('orbit:quit', () => app.quit())
+
+  ipcMain.handle('orbit:continueWork', async (_e, workId: string, accountId: string) => {
+    if (DEMO) return { ok: true, message: 'Demonstração: abriria o Terminal na conta escolhida.' }
+    const accs = snapshot?.accounts ?? []
+    const to = accs.find((a) => a.id === accountId)
+    if (!to) return { ok: false, message: 'Conta não encontrada.' }
+    if (to.needsLogin) return { ok: false, message: `${to.name} ainda não fez login.` }
+    const claude = await findClaude(settings.claudePath)
+    if (!claude) return { ok: false, message: 'Claude Code não encontrado.' }
+    const from = accs.find((a) => a.id === works.accountOf(workId))
+    const r = await works.prepareContinue(workId, from, to, settings.handoffFullHistory, Date.now())
+    if ('error' in r) return { ok: false, message: r.error }
+    const t = openClaudeTerminal(claude, {
+      configDir: to.configDir,
+      cwd: r.cwd,
+      label: `continuar-${workId.slice(0, 8)}`,
+      args: r.args,
+      banner: [`Orbit · continuando "${r.title}" na conta ${to.name}`]
+    })
+    await tick()
+    if (t.opened) {
+      await shell.openPath(t.opened)
+      return { ok: true, opened: true, message: `Abri o Terminal em ${to.name}. O Claude começa lendo o registro de continuação.`, command: t.command }
+    }
+    return { ok: true, opened: false, message: 'Rode este comando num terminal para continuar:', command: t.command }
+  })
+  ipcMain.handle('orbit:saveWork', async (_e, workId: string) => {
+    if (DEMO) return { ok: true, message: 'Demonstração: o registro seria salvo.' }
+    const acc = snapshot?.accounts.find((a) => a.id === works.accountOf(workId))
+    const pct = acc ? Math.max(acc.usage.fiveHour?.usedPercent ?? 0, acc.usage.sevenDay?.usedPercent ?? 0) : null
+    const r = await works.requestNote(workId, acc, pct, Date.now())
+    await tick()
+    if (!r) return { ok: false, message: 'Não consegui salvar o registro.' }
+    return r.asked
+      ? { ok: true, message: 'Rascunho salvo. O Claude escreve o registro completo no fim do turno atual (ou do próximo).' }
+      : { ok: true, message: 'Registro salvo pelo Orbit a partir do histórico (sem hooks, o Claude não é chamado).' }
+  })
+  ipcMain.handle('orbit:readWorkNote', (_e, workId: string) => (DEMO ? demoNote : works.noteText(workId)))
+  ipcMain.handle('orbit:renameWork', async (_e, workId: string, title: string) => {
+    works.rename(workId, String(title ?? ''))
+    await tick()
+  })
+  ipcMain.handle('orbit:finishWork', async (_e, workId: string) => {
+    works.finish(workId, Date.now())
+    await tick()
+  })
+  ipcMain.handle('orbit:dismissWork', async (_e, workId: string) => {
+    works.dismiss(workId)
+    await tick()
+  })
 }
 
 // ---------- ciclo de vida ----------
@@ -404,6 +478,8 @@ void app.whenReady().then(async () => {
   store.prune(Date.now())
   settings = { ...DEFAULT_SETTINGS, ...store.get<Partial<Settings>>('settings', {}) }
   notifier = new Notifier(store)
+  works = new WorkTracker(store, switchAlert)
+  upgradeHookScript()
   registerIpc()
   createTray()
   createWindow()

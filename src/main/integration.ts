@@ -31,10 +31,16 @@ printf '%s' "$payload" > "$tmp" && mv "$tmp" "$out/$id.json"
 exit 0
 `
 
+/** Muda quando o hook.sh muda: o Orbit atualiza o próprio script ao abrir. */
+const HOOK_VERSION = 'orbit-hook: v2'
+
 const HOOK_BODY = `#!/bin/sh
+# ${HOOK_VERSION}
 # Orbit: registra o último evento de cada sessão do Claude Code em ~/.orbit/events/<session_id>.json.
 # Guarda só o nome do evento, a ferramenta e o tipo de notificação. Nunca o prompt.
-# Sempre sai com 0 e sem saída, para não interferir no Claude Code.
+# Sempre sai com 0. Só imprime algo em um caso: no fim do turno (Stop), se o Orbit pediu o registro
+# de continuação desta sessão (~/.orbit/handoff/<session_id>, quando a conta chega no limite seguro),
+# entrega o pedido ao Claude uma única vez.
 
 payload=$(cat)
 field() {
@@ -56,8 +62,27 @@ printf '{"event":"%s","tool":"%s","notification":"%s","account":"%s","ts":%s}' \
 if [ "$event" = "UserPromptSubmit" ]; then
   printf '%s' "$ts" > "$out/.$sid.turn"
 fi
+
+req="$HOME/.orbit/handoff/$sid"
+if [ "$event" = "Stop" ] && [ -f "$req" ]; then
+  # stop_hook_active: o Claude já está atendendo um pedido de hook; não pede de novo.
+  if ! printf '%s' "$payload" | grep -q '"stop_hook_active" *: *true'; then
+    reason=$(cat "$req")
+    rm -f "$req"
+    [ -n "$reason" ] && printf '{"decision":"block","reason":%s}' "$reason"
+  fi
+fi
 exit 0
 `
+
+/** Atualiza o hook.sh de versões antigas do Orbit (o script é do Orbit, em ~/.orbit). */
+export function upgradeHookScript(): void {
+  try {
+    if (existsSync(HOOK_SCRIPT) && !readFileSync(HOOK_SCRIPT, 'utf8').includes(HOOK_VERSION)) ensureScript(HOOK_SCRIPT, HOOK_BODY, true)
+  } catch {
+    /* sem permissão: segue com o script antigo */
+  }
+}
 
 export const HOOK_EVENTS = [
   'SessionStart',
@@ -76,8 +101,11 @@ interface HookEntry {
   matcher?: string
   hooks?: { type: string; command?: string }[]
 }
+const NOTE_RULE = 'Edit(.orbit/trabalhos/**)'
+
 interface ClaudeSettings {
   statusLine?: { type?: string; command?: string }
+  permissions?: Record<string, unknown>
   hooks?: Record<string, HookEntry[]>
   [k: string]: unknown
 }
@@ -138,6 +166,11 @@ export function installIntegration(configDir: string): ActionResult {
   if (!cmd) next.statusLine = { type: 'command', command: STATUSLINE_SCRIPT }
   else if (!isOurs(cmd, STATUSLINE_SCRIPT))
     notes.push(`a statusline atual ("${cmd}") foi mantida; sem a do Orbit não há leitura dos limites`)
+
+  // O registro de continuação fica em <repo>/.orbit/trabalhos: o Claude pode escrevê-lo sem pedir permissão.
+  const perms = (next.permissions ??= {}) as { allow?: string[] }
+  perms.allow ??= []
+  if (!perms.allow.includes(NOTE_RULE)) perms.allow.push(NOTE_RULE)
 
   next.hooks ??= {}
   for (const ev of HOOK_EVENTS) {

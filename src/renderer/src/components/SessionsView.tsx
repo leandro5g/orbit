@@ -1,100 +1,162 @@
-import { formatAgo, formatElapsed, formatRemaining, rank, STATE_LABEL } from '../../../shared/format'
-import type { AccountView, Session } from '../../../shared/types'
+import { useState } from 'react'
+import { formatAgo, formatElapsed, rank, STATE_LABEL } from '../../../shared/format'
+import type { AccountView, Session, Work } from '../../../shared/types'
 import { useOrbit } from '../store'
-import { Bar, Dot, Lines, usageTone } from './ui'
+import { Dot, Lines, usageTone } from './ui'
 
-function Overview({ accounts, now }: { accounts: AccountView[]; now: number }) {
+function UsageSummary({ a }: { a: AccountView }) {
+  const part = (label: string, w: AccountView['usage']['fiveHour']) =>
+    w && (
+      <span>
+        {label} <span className={w.renewed ? 'muted' : `tone-text-${usageTone(w.usedPercent)}`}>{w.renewed ? 'renovada' : `${w.usedPercent}%`}</span>
+      </span>
+    )
+  if (a.needsLogin) return <span className="group-usage">sem login</span>
   return (
-    <section className="overview">
-      <h2>Todas as contas</h2>
-      <table>
-        <thead>
-          <tr>
-            <th />
-            <th>5 horas</th>
-            <th>Semana</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((a) => {
-            const f = a.usage.fiveHour
-            const w = a.usage.sevenDay
-            return (
-              <tr key={a.id}>
-                <td>
-                  <Dot state={a.state} /> {a.name}
-                </td>
-                <td>
-                  {f && !f.renewed ? (
-                    <>
-                      <span className="ov-num">{f.usedPercent}%</span>
-                      <Bar pct={f.usedPercent} tone={usageTone(f.usedPercent)} />
-                      <span className="muted small">{f.resetsAt ? formatRemaining(f.resetsAt - now) : 'não iniciada'}</span>
-                    </>
-                  ) : (
-                    <span className="muted">{f?.renewed ? 'renovada' : '—'}</span>
-                  )}
-                </td>
-                <td>
-                  {w && !w.renewed ? (
-                    <>
-                      <span className="ov-num">{w.usedPercent}%</span>
-                      <Bar pct={w.usedPercent} tone="purple" />
-                      <span className="muted small">{w.resetsAt ? formatRemaining(w.resetsAt - now) : 'não iniciada'}</span>
-                    </>
-                  ) : (
-                    <span className="muted">{w?.renewed ? 'renovada' : '—'}</span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </section>
+    <span className="group-usage">
+      {part('5h', a.usage.fiveHour)}
+      {part('semana', a.usage.sevenDay)}
+    </span>
   )
 }
 
-function SessionRow({ s, now }: { s: Session; now: number }) {
-  const running = s.state === 'working' || s.state === 'thinking'
-  const c = s.changes
+function noteStatus(w: Work, now: number): string {
+  if (w.requestedAt) return 'Claude escrevendo o registro'
+  if (w.noteAt) return `registro salvo ${formatAgo(w.noteAt, now)}`
+  return 'sem registro'
+}
+
+function Progress({ w }: { w: Work }) {
+  if (!w.totalItems && !w.next) return null
   return (
-    <li className="session">
-      <div className="session-head">
-        <Dot state={s.state} />
-        <span className="session-title" title={s.cwd}>
-          {s.title}
-        </span>
-        <span className="session-state">{STATE_LABEL[s.state]}</span>
-      </div>
-      <div className="session-meta">
-        <button className="link inline" onClick={() => window.orbit.openPath(c?.repoRoot ?? s.cwd)}>
-          {s.project}
+    <div className="item-line">
+      {w.totalItems ? `${w.doneItems ?? 0} de ${w.totalItems} feitos` : ''}
+      {w.totalItems && w.next ? ' · ' : ''}
+      {w.next && <>próximo: {w.next}</>}
+    </div>
+  )
+}
+
+function Title({ w, fallback }: { w: Work | null; fallback: string }) {
+  const [editing, setEditing] = useState(false)
+  if (w && editing)
+    return (
+      <input
+        className="rename"
+        autoFocus
+        defaultValue={w.title}
+        onBlur={(e) => {
+          void window.orbit.renameWork(w.id, e.currentTarget.value)
+          setEditing(false)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+      />
+    )
+  return (
+    <span className="item-title" title={w ? 'Clique duas vezes para renomear' : undefined} onDoubleClick={() => w && setEditing(true)}>
+      {w?.title ?? fallback}
+    </span>
+  )
+}
+
+/** Ações do trabalho: continuar em outra conta (principal), registro e concluir. */
+function WorkActions({ w, primary }: { w: Work; primary: string }) {
+  const now = useOrbit((s) => s.now)
+  const showToast = useOrbit((s) => s.showToast)
+  const [note, setNote] = useState<string | null | undefined>(undefined)
+  return (
+    <>
+      <div className="item-actions">
+        <button className="btn small-btn" onClick={() => useOrbit.getState().openSwitch(w.accountId, w.id)}>
+          {primary}
         </button>
-        {c?.branch && <span> · {c.branch}</span>}
-        {s.model && <span> · {s.model}</span>}
-        {s.tool && <span> · {s.tool}</span>}
-        <span className="muted">
-          {' · '}
-          {running ? `executando há ${formatElapsed(now - s.stateSince)}` : `atualizado ${formatAgo(s.updatedAt, now)}`}
-        </span>
+        <button
+          className="text-btn"
+          onClick={async () => setNote(note === undefined ? await window.orbit.readWorkNote(w.id) : undefined)}
+          title={noteStatus(w, now)}
+        >
+          {note === undefined ? 'Registro' : 'Fechar registro'}
+        </button>
+        {w.status === 'paused' && (
+          <button className="text-btn" onClick={() => void window.orbit.finishWork(w.id)}>
+            Concluir
+          </button>
+        )}
       </div>
-      {(c || s.claudeLinesAdded != null) && (
-        <div className="session-changes">
-          {s.claudeLinesAdded != null && (
-            <span title="Linhas escritas pelo Claude nesta sessão">
-              Sessão <Lines added={s.claudeLinesAdded} removed={s.claudeLinesRemoved} />
-            </span>
-          )}
-          {c && (
-            <span title="Alterações não commitadas no repositório (git)">
-              Repo: {c.filesModified} mod · {c.filesAdded} novos · {c.filesDeleted} rem ·{' '}
-              <Lines added={c.linesAdded} removed={c.linesRemoved} />
-            </span>
-          )}
-          {c?.lastFile && <span className="muted last-file">Último: {c.lastFile}</span>}
+      {note !== undefined && (
+        <div className="work-note">
+          <div className="work-note-head">
+            <span className="muted small">{noteStatus(w, now)}</span>
+            {w.status !== 'done' && (
+              <button className="text-btn" onClick={async () => showToast(await window.orbit.saveWork(w.id))}>
+                Salvar agora
+              </button>
+            )}
+            {note && (
+              <button className="text-btn" onClick={() => window.orbit.openPath(w.noteFile)}>
+                Abrir arquivo
+              </button>
+            )}
+          </div>
+          {note ? <pre>{note}</pre> : <p className="muted small">Ainda não há registro. Use "Salvar agora".</p>}
         </div>
       )}
+    </>
+  )
+}
+
+function SessionItem({ s, w, now }: { s: Session; w: Work | null; now: number }) {
+  const running = s.state === 'working' || s.state === 'thinking'
+  return (
+    <li className="item">
+      <div className="item-head">
+        <Dot state={s.state} />
+        <Title w={w} fallback={s.title} />
+        <span className="item-state">
+          {STATE_LABEL[s.state]}
+          {running ? ` · ${formatElapsed(now - s.stateSince)}` : ''}
+        </span>
+      </div>
+      <div className="item-line muted">
+        <button className="text-btn" onClick={() => window.orbit.openPath(s.changes?.repoRoot ?? s.cwd)} title={s.cwd}>
+          {s.project}
+        </button>
+        {s.changes?.branch && ` · ${s.changes.branch}`}
+        {s.model && ` · ${s.model}`}
+        {s.claudeLinesAdded != null && (
+          <>
+            {' · '}
+            <Lines added={s.claudeLinesAdded} removed={s.claudeLinesRemoved} />
+          </>
+        )}
+        {!running && ` · ${formatAgo(s.updatedAt, now)}`}
+      </div>
+      {w && <Progress w={w} />}
+      {w && <WorkActions w={w} primary="Continuar em outra conta" />}
+    </li>
+  )
+}
+
+function PausedItem({ w, accounts, now }: { w: Work; accounts: AccountView[]; now: number }) {
+  const acc = accounts.find((a) => a.id === w.accountId)
+  return (
+    <li className="item">
+      <div className="item-head">
+        <span className="dot tone-yellow" />
+        <Title w={w} fallback={w.title} />
+        <span className="item-state">parado {formatAgo(w.updatedAt, now)}</span>
+      </div>
+      <div className="item-line muted">
+        <button className="text-btn" onClick={() => window.orbit.openPath(w.cwd)} title={w.cwd}>
+          {w.project}
+        </button>
+        {' · '}parou em {acc?.name ?? w.accountId}
+      </div>
+      <Progress w={w} />
+      <WorkActions w={w} primary="Continuar" />
     </li>
   )
 }
@@ -102,39 +164,77 @@ function SessionRow({ s, now }: { s: Session; now: number }) {
 export function SessionsView() {
   const snapshot = useOrbit((s) => s.snapshot)!
   const now = useOrbit((s) => s.now)
-  const groups = snapshot.accounts
-    .map((a) => ({ a, sessions: [...a.sessions].sort((x, y) => rank(x.state) - rank(y.state) || y.updatedAt - x.updatedAt) }))
-    .filter((g) => g.sessions.length)
+  const [showDone, setShowDone] = useState(false)
+  const works = snapshot.works ?? []
+  const bySession = new Map(works.map((w) => [w.sessionId, w]))
+  const live = new Set(snapshot.accounts.flatMap((a) => a.sessions.map((s) => s.id)))
 
-  // Repos com mais de uma sessão: a contagem do git é do repo, mostrada uma vez por repo.
-  const repos = new Map<string, number>()
-  for (const g of groups) for (const s of g.sessions) if (s.changes) repos.set(s.changes.repoRoot, (repos.get(s.changes.repoRoot) ?? 0) + 1)
-  const shared = [...repos.values()].filter((n) => n > 1).length
+  // Trabalho aberto sem sessão viva na tela: parado, esperando continuar.
+  const paused = works.filter((w) => w.status !== 'done' && !live.has(w.sessionId))
+  const done = works.filter((w) => w.status === 'done')
 
   return (
     <>
-      <Overview accounts={snapshot.accounts} now={now} />
-      <hr />
-      <section>
-        <h2>Sessões ativas</h2>
-        {!groups.length && <p className="empty">Nenhuma sessão do Claude Code aberta.</p>}
-        {groups.map(({ a, sessions }) => (
-          <div key={a.id} className="session-group">
-            <h3>{a.name}</h3>
-            <ul className="sessions">
-              {sessions.map((s) => (
-                <SessionRow key={s.id} s={s} now={now} />
+      {snapshot.accounts.map((a) => {
+        const sessions = [...a.sessions].sort((x, y) => rank(x.state) - rank(y.state) || y.updatedAt - x.updatedAt)
+        return (
+          <section key={a.id} className="group">
+            <div className="group-head">
+              <h2>{a.name}</h2>
+              <UsageSummary a={a} />
+            </div>
+            {sessions.length ? (
+              <ul className="items">
+                {sessions.map((s) => {
+                  const w = bySession.get(s.id) ?? null
+                  return <SessionItem key={s.id} s={s} w={w && w.status !== 'done' ? w : null} now={now} />
+                })}
+              </ul>
+            ) : (
+              <p className="empty">Nenhuma sessão aberta.</p>
+            )}
+          </section>
+        )
+      })}
+
+      {paused.length > 0 && (
+        <section className="group">
+          <div className="group-head">
+            <h2>Parados</h2>
+            <span className="group-usage">esperando continuar</span>
+          </div>
+          <ul className="items">
+            {paused.map((w) => (
+              <PausedItem key={w.id} w={w} accounts={snapshot.accounts} now={now} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {done.length > 0 && (
+        <section className="group">
+          <button className="text-btn" onClick={() => setShowDone(!showDone)}>
+            {showDone ? 'Esconder concluídos' : `Concluídos (${done.length})`}
+          </button>
+          {showDone && (
+            <ul className="done-list">
+              {done.map((w) => (
+                <li key={w.id}>
+                  <span className="item-title muted">{w.title}</span>
+                  <button className="text-btn" onClick={() => void window.orbit.dismissWork(w.id)}>
+                    Remover
+                  </button>
+                </li>
               ))}
             </ul>
-          </div>
-        ))}
-        {shared > 0 && (
-          <p className="footnote">
-            {shared === 1 ? 'Um repositório tem' : `${shared} repositórios têm`} mais de uma sessão: a contagem "Repo" é a
-            mesma para elas, não some.
-          </p>
-        )}
-      </section>
+          )}
+        </section>
+      )}
+
+      <p className="footnote">
+        O registro de cada trabalho fica em <code>.orbit/trabalhos/</code> no projeto, fora do git, e é salvo sozinho em{' '}
+        {snapshot.settings.handoffAt}% de uso.
+      </p>
     </>
   )
 }

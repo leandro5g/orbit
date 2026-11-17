@@ -1,4 +1,4 @@
-import type { AccountView, Session, Settings, Snapshot } from '../shared/types.ts'
+import type { AccountView, Session, Settings, Snapshot, Work } from '../shared/types.ts'
 
 /**
  * Dados fictícios para prints e demonstrações (ORBIT_DEMO=1). Nada aqui vem da máquina:
@@ -129,8 +129,19 @@ export function demoSnapshot(settings: Settings, now: number): Snapshot {
       )
     ]
   }
+  // ORBIT_DEMO_SWITCH=1: conta pessoal quase esgotada; =out: esgotada. Para mostrar a troca de conta.
+  const demoSwitch = globalThis.process?.env?.ORBIT_DEMO_SWITCH
+  if (demoSwitch === '1' || demoSwitch === 'out') {
+    const pct = demoSwitch === 'out' ? 100 : 96
+    personal.usage = {
+      ...personal.usage,
+      fiveHour: { usedPercent: pct, resetsAt: now + 52 * M, renewed: false },
+      forecast: { exhaustAt: now + 9 * M, ratePerHour: 28, confidence: 'alta', beforeReset: true, samples: 30 }
+    }
+  }
   return {
     accounts: [personal, work],
+    works: demoWorks(now),
     selectedId: personal.id,
     settings: { ...settings, names: {}, hiddenAccounts: [] },
     generatedAt: now,
@@ -139,3 +150,85 @@ export function demoSnapshot(settings: Settings, now: number): Snapshot {
     claudePath: '/usr/local/bin/claude'
   }
 }
+
+function demoWorks(now: number): Work[] {
+  const base = { requestedAt: null, updatedAt: now - 20_000 }
+  return [
+    {
+      ...base,
+      id: 'a1',
+      title: 'Previsão de esgotamento com média móvel',
+      project: 'orbit',
+      cwd: '/Users/demo/code/orbit',
+      accountId: 'demo-personal',
+      sessionId: 'a1',
+      status: 'active',
+      noteFile: '/Users/demo/code/orbit/.orbit/trabalhos/a1.md',
+      noteBy: 'claude',
+      noteAt: now - 2 * M,
+      doneItems: 4,
+      totalItems: 6,
+      next: 'Testes do forecast com janelas renovadas'
+    },
+    {
+      ...base,
+      id: 'a2',
+      title: 'Migrar posts para MDX',
+      project: 'blog',
+      cwd: '/Users/demo/code/blog',
+      accountId: 'demo-personal',
+      sessionId: 'a2',
+      status: 'active',
+      noteFile: '/Users/demo/code/blog/.orbit/trabalhos/a2.md',
+      noteBy: 'orbit',
+      noteAt: now - 5 * M,
+      doneItems: null,
+      totalItems: null,
+      next: null,
+      requestedAt: now - 5 * M
+    },
+    {
+      ...base,
+      id: 'c1',
+      title: 'Rate limit no gateway',
+      project: 'api-gateway',
+      cwd: '/Users/demo/code/api-gateway',
+      accountId: 'demo-work',
+      sessionId: 'c1',
+      status: 'paused',
+      noteFile: '/Users/demo/code/api-gateway/.orbit/trabalhos/c1.md',
+      noteBy: 'claude',
+      noteAt: now - 3 * H,
+      doneItems: 2,
+      totalItems: 5,
+      next: 'Middleware de Redis com janela deslizante',
+      updatedAt: now - 3 * H
+    }
+  ]
+}
+
+export const demoNote = `# Previsão de esgotamento com média móvel
+
+## Objetivo
+Mostrar quando a janela de 5h chega a 100% no ritmo atual, por conta.
+
+## Feito
+- [x] Cálculo em forecast.ts
+- [x] Amostras no SQLite por conta
+- [x] Tipos compartilhados
+- [x] Linha de previsão no popover
+
+## Falta
+- [ ] Testes do forecast com janelas renovadas
+- [ ] Notificação quando a previsão cai antes do reset
+
+## Decisões e contexto
+Média móvel dos últimos 90 min, não regressão de toda a janela: reage mais rápido a mudança de ritmo.
+
+## Arquivos
+- src/main/forecast.ts: cálculo
+- src/renderer/src/components/MainView.tsx: ForecastLine
+
+## Próximo passo
+Testes do forecast com janelas renovadas
+`

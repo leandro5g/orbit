@@ -131,27 +131,43 @@ export function launchCommand(configDir: string): string {
 }
 
 /**
- * Abre o Terminal com o Claude Code na pasta da conta. Sem login, o próprio Claude Code
- * pede o login no navegador (fluxo oficial). Só macOS por enquanto; nos outros, devolve o comando.
+ * Abre o Terminal com o Claude Code numa conta, numa pasta, com argumentos (ex.: um prompt inicial).
+ * Só macOS por enquanto; nos outros sistemas devolve o comando para o usuário rodar.
  */
-export function openLoginTerminal(claude: string, configDir: string, label: string): { opened: string | null; command: string } {
-  const command = launchCommand(configDir)
+export function openClaudeTerminal(
+  claude: string,
+  o: { configDir: string; cwd: string; label: string; args?: string[]; banner: string[] }
+): { opened: string | null; command: string } {
+  const args = (o.args ?? []).map(q).join(' ')
+  const cdPart = o.cwd === HOME ? '' : `cd ${q(o.cwd)} && `
+  const command = `${cdPart}${launchCommand(o.configDir)}${args ? ' ' + args : ''}`
   if (process.platform !== 'darwin') return { opened: null, command }
   mkdirSync(ORBIT_DIR, { recursive: true, mode: 0o700 })
-  const file = join(ORBIT_DIR, `login-${label.replace(/[^\w-]/g, '_')}.command`)
-  const env = configDir === DEFAULT_CONFIG_DIR ? 'unset CLAUDE_CONFIG_DIR' : `export CLAUDE_CONFIG_DIR=${q(configDir)}`
+  const file = join(ORBIT_DIR, `${o.label.replace(/[^\w-]/g, '_')}.command`)
+  const env = o.configDir === DEFAULT_CONFIG_DIR ? 'unset CLAUDE_CONFIG_DIR' : `export CLAUDE_CONFIG_DIR=${q(o.configDir)}`
+  const echo = o.banner.map((l) => `echo ${q(l.replace(/[$`\\]/g, ''))}`).join('\n')
   writeFileSync(
     file,
     `#!/bin/sh
 clear
-echo "Orbit · conta ${label.replace(/["$`\\]/g, '')}"
-echo "Se o Claude Code pedir, faça o login no navegador. Depois pode fechar esta janela."
+${echo}
 echo
-cd "$HOME"
+cd ${q(o.cwd)} || cd "$HOME"
 ${env}
-exec ${q(claude)}
+exec ${q(claude)}${args ? ' ' + args : ''}
 `
   )
   chmodSync(file, 0o755)
   return { opened: file, command }
+}
+
+/** Login de uma conta: o próprio Claude Code pede o login no navegador (fluxo oficial). */
+export function openLoginTerminal(claude: string, configDir: string, label: string): { opened: string | null; command: string } {
+  const r = openClaudeTerminal(claude, {
+    configDir,
+    cwd: HOME,
+    label: `login-${label}`,
+    banner: [`Orbit · conta ${label}`, 'Se o Claude Code pedir, faça o login no navegador. Depois pode fechar esta janela.']
+  })
+  return { opened: r.opened, command: launchCommand(configDir) }
 }

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { formatAgo, formatClock, formatElapsed, formatRemaining, mostRelevant } from '../../../shared/format'
 import type { AccountView, Session, Usage } from '../../../shared/types'
+import type { Work } from '../../../shared/types'
+import { accountsNeedingSwitch, backAt, pressure, recommendAccount } from '../../../shared/works'
 import { Calendar, Check, Clock, Terminal, Trend } from '../icons'
 import { useOrbit } from '../store'
 import { Bar, Dot, Lines, Spinner, StatePill, usageTone } from './ui'
+import { continueMany } from './SwitchView'
 
 export function AccountList({ accounts, selectedId }: { accounts: AccountView[]; selectedId: string | null }) {
   const [editing, setEditing] = useState<string | null>(null)
@@ -13,6 +16,8 @@ export function AccountList({ accounts, selectedId }: { accounts: AccountView[];
       {accounts.map((a) => {
         const pct = a.usage.fiveHour?.usedPercent
         const selected = a.id === selectedId
+        const out = (pressure(a) ?? 0) >= 100
+        const back = out ? backAt(a) : null
         return (
           <li key={a.id}>
             <button
@@ -45,10 +50,23 @@ export function AccountList({ accounts, selectedId }: { accounts: AccountView[];
               )}
               <span
                 className={`account-pct ${a.alert ? `tone-text-${usageTone(pct)}` : ''}`}
-                title={a.usage.fiveHour?.renewed ? 'Janela renovada; sem leitura nova do Claude Code' : undefined}
+                title={
+                  a.usage.fiveHour?.renewed
+                    ? 'Janela renovada; sem leitura nova do Claude Code'
+                    : a.alert
+                      ? 'Uso alto ou esgotamento previsto'
+                      : undefined
+                }
               >
-                {a.alert && <span className="alert-mark" title="Uso alto ou esgotamento previsto">!</span>}
-                {pct != null ? `${pct}%` : '—'}
+                {out ? (
+                  <span className="tone-text-red" title={back ? `Volta às ${formatClock(back)}` : undefined}>
+                    esgotou
+                  </span>
+                ) : pct != null ? (
+                  `${pct}%`
+                ) : (
+                  '—'
+                )}
               </span>
               <span className="account-check">{selected && <Check size={16} />}</span>
             </button>
@@ -109,8 +127,7 @@ function Limit({
   resetsAt,
   renewed,
   tone,
-  now,
-  showClock
+  now
 }: {
   icon: React.ReactNode
   label: string
@@ -119,7 +136,6 @@ function Limit({
   renewed: boolean
   tone: 'green' | 'yellow' | 'red' | 'purple'
   now: number
-  showClock?: boolean
 }) {
   return (
     <div className="limit">
@@ -135,14 +151,15 @@ function Limit({
                 <strong>{pct}%</strong>
                 <span className="muted">
                   {' · '}
-                  {resetsAt ? `Renova em ${formatRemaining(resetsAt - now)}` : 'janela não iniciada'}
+                  {resetsAt
+                    ? `renova em ${formatRemaining(resetsAt - now)}${resetsAt - now < 20 * 3600_000 ? ` · ${formatClock(resetsAt, now)}` : ''}`
+                    : 'janela não iniciada'}
                 </span>
               </>
             )}
           </span>
         </div>
         <Bar pct={renewed ? 0 : pct} tone={tone} />
-        {showClock && !renewed && resetsAt && <div className="limit-clock">Renovação às {formatClock(resetsAt, now)}</div>}
       </div>
     </div>
   )
@@ -161,7 +178,6 @@ export function Limits({ usage, now }: { usage: Usage; now: number }) {
           renewed={fiveHour.renewed}
           tone={usageTone(fiveHour.usedPercent)}
           now={now}
-          showClock
         />
       ) : null}
       {sevenDay ? (
@@ -182,30 +198,21 @@ export function Limits({ usage, now }: { usage: Usage; now: number }) {
 export function ForecastLine({ usage, now }: { usage: Usage; now: number }) {
   const f = usage.forecast
   const w = usage.fiveHour
-  if (!w || w.renewed) return null
-  let text: React.ReactNode
-  if (!f) text = 'Estimativa indisponível: poucas leituras recentes nesta janela.'
-  else if (f.exhaustAt && f.beforeReset)
-    text = (
+  // Já esgotada: não há o que prever.
+  if (!w || w.renewed || (w.usedPercent ?? 0) >= 100) return null
+  if (!f) return null
+  const text =
+    f.exhaustAt && f.beforeReset ? (
       <>
-        Esgota por volta de <strong>{formatClock(f.exhaustAt, now)}</strong>, antes do reset
+        No ritmo atual, esgota por volta de <strong>{formatClock(f.exhaustAt, now)}</strong>
       </>
+    ) : (
+      'No ritmo atual, não esgota antes de renovar'
     )
-  else if (f.exhaustAt) text = <>No ritmo atual, não esgota antes do reset</>
-  else text = <>Ritmo baixo: não esgota antes do reset</>
   return (
-    <div className={`forecast ${f?.beforeReset ? 'warn' : ''}`}>
-      <Trend size={15} />
-      <span>
-        {text}
-        {f && (
-          <span className="muted">
-            {' · '}
-            {f.ratePerHour}%/h · confiança {f.confidence}
-          </span>
-        )}
-        <span className="estimate-tag">estimativa</span>
-      </span>
+    <div className={`forecast ${f.beforeReset ? 'warn' : ''}`} title={`Estimativa · ${f.ratePerHour}%/h · confiança ${f.confidence}`}>
+      <Trend size={14} />
+      <span>{text}</span>
     </div>
   )
 }
@@ -230,6 +237,113 @@ function Copyable({ text }: { text: string }) {
         {done ? 'Copiado' : 'Copiar'}
       </button>
     </div>
+  )
+}
+
+/** Conta esgotada (ou quase): diz isso e lista as sessões dela, cada uma com um botão para continuar em outra conta. */
+function SwitchPanel({ from }: { from: AccountView }) {
+  const snapshot = useOrbit((s) => s.snapshot)!
+  const now = useOrbit((s) => s.now)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [commands, setCommands] = useState<string[]>([])
+  const works = (snapshot.works ?? [])
+    .filter((w) => w.accountId === from.id && w.status !== 'done')
+    .sort((a, b) => (a.status === b.status ? b.updatedAt - a.updatedAt : a.status === 'active' ? -1 : 1))
+  const pct = pressure(from) ?? 0
+  const out = pct >= 100
+  const back = backAt(from)
+  const f = from.usage.forecast
+  const best = recommendAccount(snapshot.accounts, from.id)
+  const others = snapshot.accounts.filter((a) => a.id !== from.id)
+  const [target, setTarget] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
+  // Conta escolhida em "Mudar conta"; sem escolha, a de mais folga.
+  const to = others.find((a) => a.id === target && !a.needsLogin && (pressure(a) ?? 0) < 100) ?? best
+
+  const go = async (w: Work) => {
+    if (!to) return
+    setBusy(w.id)
+    const cmds = await continueMany([w], to)
+    setCommands((c) => [...c, ...cmds])
+    setBusy(null)
+  }
+
+  return (
+    <section className={`switch-panel ${out ? 'out' : ''}`}>
+      <div className="switch-panel-head">
+        <span className="switch-panel-title">
+          {from.name} {out ? 'esgotou' : `em ${pct}%`}
+        </span>
+        <span className="muted small">
+          {out && back
+            ? `volta às ${formatClock(back, now)}`
+            : f?.exhaustAt && f.beforeReset
+              ? `esgota às ${formatClock(f.exhaustAt, now)}`
+              : ''}
+        </span>
+      </div>
+      {to && (
+        <div className="switch-target">
+          <span className="muted small">
+            Continuar em <strong>{to.name}</strong> ({pressure(to) ?? '—'}%)
+          </span>
+          <button className="text-btn strong" onClick={() => setPicking(!picking)}>
+            {picking ? 'Fechar' : 'Mudar conta'}
+          </button>
+        </div>
+      )}
+      {picking && (
+        <div className="target-list">
+          {others.map((a) => {
+            const p = pressure(a)
+            const full = a.needsLogin || (p ?? 0) >= 100
+            return (
+              <button
+                key={a.id}
+                className={`target ${to?.id === a.id ? 'on' : ''}`}
+                disabled={full}
+                onClick={() => {
+                  setTarget(a.id)
+                  setPicking(false)
+                }}
+              >
+                <span>{a.name}</span>
+                <span className="muted">{a.needsLogin ? 'sem login' : full ? 'esgotou' : `${p ?? '—'}%`}</span>
+              </button>
+            )
+          })}
+          <button className="target add" onClick={() => useOrbit.getState().setView('add')}>
+            + Adicionar conta
+          </button>
+        </div>
+      )}
+      <ul className="switch-rows">
+        {works.map((w) => (
+          <li key={w.id}>
+            <span className="switch-row-text" title={w.title}>
+              <span className="switch-work-title">{w.title}</span>
+              <span className="muted small">{w.project}</span>
+            </span>
+            {to && (
+              <button className="btn primary small-btn" disabled={busy != null} onClick={() => void go(w)}>
+                {busy === w.id ? 'Abrindo…' : `Continuar em ${to.name}`}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {!to && (
+        <p className="muted small switch-panel-note">
+          Nenhuma outra conta com folga.{' '}
+          <button className="text-btn strong" onClick={() => useOrbit.getState().setView('add')}>
+            Adicionar conta
+          </button>
+        </p>
+      )}
+      {commands.map((c) => (
+        <Copyable key={c} text={c} />
+      ))}
+    </section>
   )
 }
 
@@ -295,9 +409,17 @@ export function MainView() {
   const acc = snapshot.accounts.find((a) => a.id === snapshot.selectedId) ?? null
   const session = acc ? mostRelevant(acc.sessions) : null
   const hasUsage = !!(acc?.usage.fiveHour || acc?.usage.sevenDay)
+  const work = session ? (snapshot.works ?? []).find((w) => w.sessionId === session.id && w.status !== 'done') : null
+  const needSwitch = accountsNeedingSwitch(snapshot.accounts, snapshot.works ?? [], snapshot.settings.switchAlertAt).sort(
+    (a, b) => (pressure(b) ?? 0) - (pressure(a) ?? 0)
+  )
+  const canSwitch = !!work && snapshot.accounts.length > 1 && !needSwitch.some((a) => a.id === acc?.id)
 
   return (
     <>
+      {needSwitch.map((a) => (
+        <SwitchPanel key={a.id} from={a} />
+      ))}
       <AccountList accounts={snapshot.accounts} selectedId={snapshot.selectedId} />
       {!snapshot.claudePath ? (
         <>
@@ -333,10 +455,21 @@ export function MainView() {
             ) : (
               <p className="empty">Nenhuma sessão do Claude Code aberta nesta conta.</p>
             )}
-            {acc.sessions.length > 1 && (
-              <button className="link" onClick={() => setView('sessions')}>
-                Ver as {acc.sessions.length} sessões
-              </button>
+            {(acc.sessions.length > 1 || canSwitch) && (
+              <div className="activity-foot">
+                {acc.sessions.length > 1 ? (
+                  <button className="text-btn" onClick={() => setView('sessions')}>
+                    Ver as {acc.sessions.length} sessões
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {canSwitch && (
+                  <button className="text-btn strong" onClick={() => useOrbit.getState().openSwitch(acc.id, work!.id)}>
+                    Continuar em outra conta
+                  </button>
+                )}
+              </div>
             )}
           </section>
           <hr />
@@ -348,11 +481,8 @@ export function MainView() {
           ) : (
             <p className="empty">{snapshot.claudePath ? 'Lendo o uso no Claude Code…' : 'Uso indisponível sem o Claude Code.'}</p>
           )}
-          {acc.usage.observedAt && (
-            <p className="footnote">
-              Uso lido do Claude Code {formatAgo(acc.usage.observedAt, now)}
-              {acc.usage.source === 'usage' ? ' · inclui o claude.ai' : ' · sessão aberta'}
-            </p>
+          {acc.usage.observedAt && now - acc.usage.observedAt > 5 * 60_000 && (
+            <p className="footnote">Uso lido do Claude Code {formatAgo(acc.usage.observedAt, now)}</p>
           )}
           {(!acc.integration.statusline || !acc.integration.hooks) &&
             !acc.integration.statuslineConflict &&

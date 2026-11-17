@@ -42,7 +42,31 @@ hooks/plugins/MCP do usuário e não grava sessão. Precisa de stdin fechado e d
 - `~/.orbit/statusline.sh`: grava o JSON da statusline em `~/.orbit/statusline/<conta>/<session_id>.json`.
   Não imprime nada. Se já existir outra statusline, ela **não** é substituída.
 - `~/.orbit/hook.sh`: grava o último evento em `~/.orbit/events/<session_id>.json` (evento, ferramenta,
-  tipo de notificação). Nunca o prompt. Sem saída e sempre `exit 0`.
+  tipo de notificação). Nunca o prompt. Sempre `exit 0`. Só imprime algo no caso do registro de continuação
+  (abaixo). O Orbit atualiza o próprio script ao abrir quando a versão muda (`# orbit-hook: vN`).
+- Permissão `Edit(.orbit/trabalhos/**)`: o Claude pode escrever o registro de continuação sem pedir aprovação.
 - Entradas em `settings.json` da conta, com backup `settings.json.orbit-bak-<timestamp>`. Idempotente.
 
 A conta é identificada por `CLAUDE_CONFIG_DIR` (`~/.claude` → `claude`, `~/.claude-work` → `claude-work`).
+
+## Trabalhos e troca de conta sem perder contexto
+
+Cada sessão do Claude Code vira um **trabalho** (o nome é o título que o Claude Code dá à conversa, no
+histórico `<CLAUDE_CONFIG_DIR>/projects/<pasta>/<session_id>.jsonl`). O trabalho sobrevive à sessão e à conta.
+
+1. **Nos `handoffAt`% (padrão 90%)** da janela de 5h ou da semana, para cada trabalho aberto na conta:
+   - O Orbit escreve um rascunho em `<repo>/.orbit/trabalhos/<id>.md`, sem tokens: primeiro pedido, pedidos
+     recentes, última resposta do Claude e arquivos alterados no git. `<repo>/.orbit/.gitignore` ignora tudo.
+   - Com os hooks instalados, grava o pedido em `~/.orbit/handoff/<session_id>`. No próximo `Stop` (fim do
+     turno), o `hook.sh` devolve `{"decision":"block","reason":...}` uma única vez e o Claude reescreve o
+     registro com objetivo, feito/falta (checklist), decisões, arquivos e próximo passo. Com `stop_hook_active`
+     o pedido não é repetido. Com a conta já em 100%, não há pedido ao Claude: fica o rascunho.
+2. **Nos `switchAlertAt`% (padrão 95%) ou com a conta esgotada**: notificação "trocar de conta?" e um bloco
+   no topo do popover ("Lab esgotou · volta às 17:40") com as sessões da conta, cada uma com o botão
+   **Continuar em <conta com mais folga>**. Em **Sessões**, cada sessão tem **Continuar em outra conta**, que
+   abre a tela de troca para escolher a conta.
+3. **Continuar em outra conta** abre o Terminal (macOS) na pasta do trabalho, com `CLAUDE_CONFIG_DIR` da conta
+   escolhida e um prompt inicial que manda ler o registro e seguir pelo próximo passo. A sessão nova que aparece
+   nessa conta e pasta em até 15 min é ligada ao mesmo trabalho. Em Windows/Linux o Orbit mostra o comando.
+4. **Levar a conversa inteira** (opcional, Ajustes): copia o `.jsonl` da sessão para a conta nova e abre com
+   `claude --resume <id>`. Gasta mais tokens, porque a conta nova recebe todo o histórico. **Experimental.**

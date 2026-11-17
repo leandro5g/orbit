@@ -4,13 +4,22 @@ import { MainView } from './components/MainView'
 import { SessionsView } from './components/SessionsView'
 import { SettingsView } from './components/SettingsView'
 import { AddAccountView } from './components/AddAccountView'
+import { SwitchView } from './components/SwitchView'
 import { useOrbit } from './store'
 
-const TITLES = { main: 'Orbit', sessions: 'Sessões', settings: 'Ajustes', add: 'Nova conta' } as const
+const TITLES = {
+  main: 'Orbit',
+  sessions: 'Sessões',
+  settings: 'Ajustes',
+  add: 'Nova conta',
+  switch: 'Trocar de conta'
+} as const
 
 export function App() {
   const { snapshot, view, toast, setSnapshot, setView, tick } = useOrbit()
   const panel = useRef<HTMLDivElement>(null)
+  // Trabalho parado esperando continuar: um ponto no ícone de sessões, sem número.
+  const waiting = snapshot?.works?.some((w) => w.status === 'paused') ?? false
 
   useEffect(() => {
     void window.orbit.getSnapshot().then(setSnapshot)
@@ -19,10 +28,16 @@ export function App() {
       tick()
       setView('main')
     })
+    // A notificação "trocar de conta?" abre o Orbit direto na tela de troca.
+    const offNav = window.orbit.onNavigate((to) => {
+      if (to.view === 'switch') useOrbit.getState().openSwitch(to.from ?? null)
+      else setView('sessions')
+    })
     const timer = setInterval(tick, 1000)
     return () => {
       offSnap()
       offShown()
+      offNav()
       clearInterval(timer)
     }
   }, [setSnapshot, setView, tick])
@@ -56,14 +71,15 @@ export function App() {
         <div className="header-actions">
           {view === 'main' && (
             <>
-              <button className="icon-btn" title="Todas as contas e sessões" onClick={() => setView('sessions')}>
-                <Expand size={17} />
-              </button>
               <button
-                className="icon-btn boxed"
-                title="Adicionar conta"
-                onClick={() => setView('add')}
+                className="icon-btn badge-host"
+                title={waiting ? 'Sessões · há trabalho parado' : 'Sessões e trabalhos'}
+                onClick={() => setView('sessions')}
               >
+                <Expand size={17} />
+                {waiting && <span className="badge-dot" />}
+              </button>
+              <button className="icon-btn" title="Adicionar conta" onClick={() => setView('add')}>
                 <Plus size={17} />
               </button>
             </>
@@ -87,6 +103,8 @@ export function App() {
           <SessionsView />
         ) : view === 'add' ? (
           <AddAccountView />
+        ) : view === 'switch' ? (
+          <SwitchView />
         ) : (
           <SettingsView />
         )}

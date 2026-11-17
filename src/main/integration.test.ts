@@ -60,3 +60,25 @@ test('statusline.sh: grava uma cópia por sessão na pasta da conta', () => {
   assert.equal(run('statusline.sh', payload, { CLAUDE_CONFIG_DIR: join(home, '.claude-work') }), '')
   assert.equal(readFileSync(join(home, '.orbit/statusline/claude-work/s1.json'), 'utf8'), payload)
 })
+
+test('hook.sh: no fim do turno entrega o pedido de registro uma vez e respeita stop_hook_active', () => {
+  mkdirSync(join(home, '.orbit/handoff'), { recursive: true })
+  const reason = 'Salve o registro em "/repo/.orbit/trabalhos/s9.md"\nlinha 2'
+  writeFileSync(join(home, '.orbit/handoff/s9'), JSON.stringify(reason))
+  // Turno ainda atendendo outro hook: não entrega.
+  assert.equal(run('hook.sh', JSON.stringify({ session_id: 's9', hook_event_name: 'Stop', stop_hook_active: true })), '')
+  const out = run('hook.sh', JSON.stringify({ session_id: 's9', hook_event_name: 'Stop', stop_hook_active: false }))
+  assert.deepEqual(JSON.parse(out), { decision: 'block', reason })
+  assert.equal(run('hook.sh', JSON.stringify({ session_id: 's9', hook_event_name: 'Stop' })), '')
+  // Outros eventos nunca entregam.
+  writeFileSync(join(home, '.orbit/handoff/s9'), JSON.stringify(reason))
+  assert.equal(run('hook.sh', JSON.stringify({ session_id: 's9', hook_event_name: 'PreToolUse' })), '')
+})
+
+test('libera o Claude para escrever o registro sem pedir permissão', () => {
+  writeFileSync(join(cfg, 'settings.json'), JSON.stringify({ permissions: { allow: ['Bash(ls)'] } }))
+  installIntegration(cfg)
+  installIntegration(cfg)
+  const s = JSON.parse(readFileSync(join(cfg, 'settings.json'), 'utf8'))
+  assert.deepEqual(s.permissions.allow, ['Bash(ls)', 'Edit(.orbit/trabalhos/**)'])
+})

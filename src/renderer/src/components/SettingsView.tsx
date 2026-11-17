@@ -4,6 +4,23 @@ import { useOrbit } from '../store'
 import { Copyable } from './MainView'
 
 const THRESHOLDS = [50, 70, 85, 95]
+const HANDOFF_AT = [80, 85, 90, 95]
+const SWITCH_AT = [90, 95, 98]
+
+function Choice({ label, value, options, onPick }: { label: string; value: number; options: number[]; onPick: (v: number) => void }) {
+  return (
+    <div className="choice">
+      <span>{label}</span>
+      <div className="thresholds">
+        {options.map((t) => (
+          <button key={t} className={`chip ${value === t ? 'on' : ''}`} onClick={() => onPick(t)}>
+            {t}%
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Toggle({ label, k, settings }: { label: string; k: keyof Settings; settings: Settings }) {
   return (
@@ -116,6 +133,28 @@ export function SettingsView() {
         <Toggle label="Sessão pedindo aprovação" k="notifyApproval" settings={settings} />
         <Toggle label="Erro em sessão" k="notifyError" settings={settings} />
         <Toggle label="Tarefa concluída" k="notifyCompletion" settings={settings} />
+      </section>
+      <hr />
+      <section>
+        <h2>Trocar de conta sem perder contexto</h2>
+        <Toggle label="Salvar os trabalhos antes de esgotar" k="handoffEnabled" settings={settings} />
+        <Choice
+          label="Salvar o registro em"
+          value={settings.handoffAt}
+          options={HANDOFF_AT}
+          onPick={(v) => void window.orbit.updateSettings({ handoffAt: v })}
+        />
+        <Choice
+          label="Perguntar se quer trocar em"
+          value={settings.switchAlertAt}
+          options={SWITCH_AT}
+          onPick={(v) => void window.orbit.updateSettings({ switchAlertAt: v })}
+        />
+        <Toggle label="Levar a conversa inteira (gasta mais tokens)" k="handoffFullHistory" settings={settings} />
+        <p className="footnote">
+          No limite, o Orbit escreve um rascunho a partir do histórico local (sem tokens) e, com os hooks instalados, pede
+          ao Claude o registro completo no fim do turno. A conta nova começa lendo esse registro.
+        </p>
       </section>
       <hr />
       <section>
