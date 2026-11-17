@@ -259,7 +259,7 @@ const Demo = () => {
   // Qual tela do app aparece em cada trecho (com fade cruzado).
   const views: { view: View; from: number; to: number }[] = [
     { view: "main", from: T.problem, to: T.save },
-    { view: "works", from: T.save, to: T.alert },
+    { view: "sessions", from: T.save, to: T.alert },
     { view: "main", from: T.alert, to: T.switch },
     { view: "switch", from: T.switch, to: T.resume },
   ];

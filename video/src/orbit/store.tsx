@@ -6,7 +6,7 @@ import type { Snapshot } from "../../../src/shared/types";
  * do frame atual, por contexto, em vez do Electron.
  */
 
-export type View = "main" | "sessions" | "settings" | "add" | "works" | "switch";
+export type View = "main" | "sessions" | "settings" | "add" | "switch";
 
 type UiState = {
   snapshot: Snapshot | null;
@@ -14,7 +14,8 @@ type UiState = {
   now: number;
   toast: { ok: boolean; message: string } | null;
   switchFrom: string | null;
-  openSwitch: (from: string | null) => void;
+  switchWork: string | null;
+  openSwitch: (from: string | null, work?: string | null) => void;
   setSnapshot: (s: Snapshot) => void;
   setView: (v: View) => void;
   tick: () => void;
@@ -28,6 +29,7 @@ const Ctx = createContext<UiState>({
   now: 0,
   toast: null,
   switchFrom: null,
+  switchWork: null,
   openSwitch: noop,
   setSnapshot: noop,
   setView: noop,
@@ -59,7 +61,7 @@ export const OrbitState = ({
   now: number;
   children: ReactNode;
 }) => {
-  const value: UiState = { snapshot, view, now, toast: null, switchFrom: null, openSwitch: noop, setSnapshot: noop, setView: noop, tick: noop, showToast: noop };
+  const value: UiState = { snapshot, view, now, toast: null, switchFrom: null, switchWork: null, openSwitch: noop, setSnapshot: noop, setView: noop, tick: noop, showToast: noop };
   current = value;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
